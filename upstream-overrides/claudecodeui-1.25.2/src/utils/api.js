@@ -50,6 +50,23 @@ export const api = {
     user: () => authenticatedFetch('/api/auth/user'),
     logout: () => authenticatedFetch('/api/auth/logout', { method: 'POST' }),
   },
+  ownerAdmin: {
+    status: () => authenticatedFetch('/api/auth/owner-admin/status'),
+    pendingDevices: () => authenticatedFetch('/api/auth/owner-admin/pending-devices'),
+    trustedDevices: () => authenticatedFetch('/api/auth/owner-admin/trusted-devices'),
+    approveDevice: (requestToken) =>
+      authenticatedFetch(`/api/auth/owner-admin/pending-devices/${encodeURIComponent(requestToken)}/approve`, {
+        method: 'POST',
+      }),
+    rejectDevice: (requestToken) =>
+      authenticatedFetch(`/api/auth/owner-admin/pending-devices/${encodeURIComponent(requestToken)}/reject`, {
+        method: 'POST',
+      }),
+    revokeDevice: (deviceId) =>
+      authenticatedFetch(`/api/auth/owner-admin/trusted-devices/${encodeURIComponent(deviceId)}`, {
+        method: 'DELETE',
+      }),
+  },
 
   // Protected endpoints
   // config endpoint removed - no longer needed (frontend uses window.location)

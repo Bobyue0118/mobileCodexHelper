@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from '../sidebar/view/Sidebar';
@@ -9,14 +9,19 @@ import { useDeviceSettings } from '../../hooks/useDeviceSettings';
 import { useSessionProtection } from '../../hooks/useSessionProtection';
 import { useProjectsState } from '../../hooks/useProjectsState';
 import MobileNav from './MobileNav';
+import OwnerAdminPanel from '../admin/OwnerAdminPanel';
+import { useAuth } from '../auth/context/AuthContext';
+import { shouldShowOwnerAdminLauncher } from '../admin/utils/ownerAdminAccess.js';
 
 export default function AppContent() {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId?: string }>();
   const { t } = useTranslation('common');
+  const { user } = useAuth();
   const { isMobile } = useDeviceSettings({ trackPWA: false });
   const { ws, sendMessage, latestMessage, isConnected } = useWebSocket();
   const wasConnectedRef = useRef(false);
+  const [showOwnerAdmin, setShowOwnerAdmin] = useState(false);
 
   const {
     activeSessions,
@@ -91,6 +96,11 @@ export default function AppContent() {
     }
   }, [isConnected, selectedSession?.id, sendMessage]);
 
+  const canShowOwnerAdmin = shouldShowOwnerAdminLauncher({
+    hostname: window.location.hostname,
+    hasUser: Boolean(user),
+  });
+
   return (
     <div className="fixed inset-0 flex bg-background">
       {!isMobile ? (
@@ -159,6 +169,16 @@ export default function AppContent() {
         />
       )}
 
+      {canShowOwnerAdmin && (
+        <button
+          className="fixed bottom-4 right-4 z-[60] rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-blue-700"
+          onClick={() => setShowOwnerAdmin(true)}
+        >
+          Owner Admin
+        </button>
+      )}
+
+      <OwnerAdminPanel isOpen={showOwnerAdmin} onClose={() => setShowOwnerAdmin(false)} />
     </div>
   );
 }
