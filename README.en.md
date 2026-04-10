@@ -2,419 +2,309 @@
 
 [中文](README.md) | [English](README.en.md)
 
-Turn the Codex sessions running on your computer into a private, phone-friendly web control panel.
+Turn the Codex sessions running on your Mac into a private, iPhone-friendly web control panel.
 
-This project is built for a simple use case:
+The goal of this fork is simple:
 
-- Codex runs locally on your PC
-- you want to view projects, sessions, and messages from your phone
-- you want to send follow-up prompts from your phone and let Codex continue on the PC
-- you want private-by-default access, with first-time device approval from the desktop
+- Codex keeps running on the Mac
+- the iPhone uses a private web UI to view projects, sessions, messages, and history
+- the iPhone can send follow-up prompts and let the Mac continue the work
+- first-time devices must be approved from the Mac locally
 
-If you are not familiar with this kind of setup, that is fine. This README is written as a practical deployment guide.
+## How this fork differs from the original Windows-first version
 
-## Interface preview
+| Topic | Original Windows-first path | This fork's macOS mobile-first path |
+| --- | --- | --- |
+| Main platform | Windows PC | macOS + iPhone |
+| Main control surface | Windows desktop tool, portable EXE, PowerShell | local browser UI, Owner Admin panel, Bash scripts |
+| Local service management | `start-mobile-codex-stack.ps1`, nginx, desktop UI | `start-mobile-codex.sh`, optional `launchd`, local browser |
+| Remote phone access | enabled from the desktop tool | `./scripts/enable-mobile-codex-remote.sh` + Tailscale Serve |
+| First-device approval | approved from the Windows desktop tool | approved from the local Owner Admin panel on the Mac |
+| Best for | people who want a Windows portable workflow | people who want Codex on a Mac and control from an iPhone |
 
-The screenshot below shows the Windows desktop control tool:
+If you want the original Windows route, use:
 
-![Mobile Codex control console preview](docs/assets/mobile-codex-control-console.png)
+- Windows English deployment: `docs/DEPLOYMENT.md`
+- Windows 中文部署：`docs/DEPLOYMENT.zh-CN.md`
 
-## What it does
+If you want the Mac + iPhone workflow, keep reading this README.
 
-- view Codex projects and sessions from a phone browser
-- send messages from the phone to continue controlling Codex on the PC
-- require desktop approval before a new device can log in
-- provide a Windows desktop tool to monitor:
-  - local service health
-  - remote publish state
-  - trusted device whitelist
-  - pending approval requests
+## The 3 things beginners should remember first
+
+1. The Mac uses `http://127.0.0.1:3001`
+2. The iPhone uses a Tailscale URL like `https://<your-machine>.ts.net`
+3. The iPhone must not use `127.0.0.1`, and the first login may require approval on the Mac
+
+## Who this is for
+
+- you already use Codex successfully on a Mac
+- you want to view history and continue sessions from an iPhone
+- you want private-by-default access through Tailscale
+- you are setting up a single-user workflow, not a shared service
 
 ## What it is not
 
-- not a multi-user SaaS system
-- not intended for exposing the Node app directly to the public internet
+- not a multi-user SaaS
+- not a public internet deployment target
 - not a full remote desktop or full remote IDE
-- focused on “phone view + chat control”, not every high-risk capability
 
-## Recommended architecture
+## Workflow at a glance
 
 ```text
-Phone browser
+iPhone Safari
    ↓
-Tailscale private HTTPS
+Tailscale private HTTPS URL
    ↓
-Local nginx reverse proxy
+Mac local web service (127.0.0.1:3001)
    ↓
-Local claudecodeui with this project's patches
+Codex sessions running on the Mac
+
+Mac local browser
    ↓
-Codex sessions on your PC
+The same local web service
+   ↓
+Owner Admin panel for approving new devices
 ```
 
-## Prerequisites
+## Interface preview
 
-Prepare the following on your Windows PC:
+The screenshot below comes from the original Windows control-console preview.
+The main change in this fork is not a brand-new UI, but the completed macOS + iPhone workflow around it.
 
-### Required
+![Mobile Codex control console preview](docs/assets/mobile-codex-control-console.png)
 
-- Python 3.11+
-- Node.js 22 LTS
+## Detailed beginner setup
+
+### Step 0: Prepare these first
+
+- a Mac where Codex already works
 - Git
-- nginx for Windows
-- a working local Codex environment
-
-### Strongly recommended
-
+- Node.js 22 LTS
 - Tailscale
+- an iPhone
+- upstream `claudecodeui v1.25.2`
 
-Why:
-
-- it is the easiest way to make this “private access for yourself only”
-- much safer than direct public exposure
-
-## Fastest path to deployment
-
-If you do not want to read everything first, follow this shortest path:
-
-### On the PC
-
-1. Install Python 3.11+, Node.js 22, nginx, and Tailscale
-2. Put upstream `claudecodeui v1.25.2` into `vendor/claudecodeui-1.25.2`
-3. Run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/apply-upstream-overrides.ps1
-cd vendor/claudecodeui-1.25.2
-npm install
-cd ..\..
-powershell -ExecutionPolicy Bypass -File scripts/start-mobile-codex-stack.ps1
-python mobile_codex_control.py
-```
-
-4. Open this in a desktop browser:
-
-```text
-http://127.0.0.1:3001
-```
-
-5. Complete the first registration
-
-### On the phone
-
-1. Install and log into Tailscale
-2. On the PC, run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/enable-mobile-codex-remote.ps1
-```
-
-3. Open the private HTTPS address shown by Tailscale
-4. Log in with the account you just created
-5. If the phone waits for approval, approve the device in the desktop tool
-
-At that point, you can usually continue controlling Codex from the phone.
-
-## macOS mobile-first deployment
-
-- English: `docs/DEPLOYMENT-macos.md`
-- 中文：`docs/DEPLOYMENT-macos.zh-CN.md`
-
-This path is for the workflow where Codex stays on the Mac, `./scripts/start-mobile-codex.sh` runs the local service, `./scripts/enable-mobile-codex-remote.sh` exposes the private Tailscale path, and the local Owner Admin panel approves the iPhone.
-
-## Step 1: Download this project
-
-Put this repository in a working directory, for example:
-
-```text
-D:\mobileCodexHelper
-```
-
-## Step 2: Download upstream claudecodeui
-
-This project is not a full replacement for upstream. It is a hardened and phone-control layer on top of upstream.
-
-Download upstream `siteboon/claudecodeui` `v1.25.2` into:
+The upstream directory must be placed at:
 
 ```text
 vendor/claudecodeui-1.25.2
 ```
 
-Expected layout:
+### Step 1: Apply the upstream patch layer
 
-```text
-mobileCodexHelper/
-├─ vendor/
-│  └─ claudecodeui-1.25.2/
-├─ upstream-overrides/
-├─ scripts/
-├─ deploy/
-└─ mobile_codex_control.py
-```
+Run from the repo root:
 
-## Step 3: Apply this project's override layer
-
-Run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/apply-upstream-overrides.ps1
-```
-
-This copies the files from `upstream-overrides/claudecodeui-1.25.2/` into the upstream checkout.
-
-## Step 4: Install upstream dependencies
-
-Go into the upstream directory:
-
-```powershell
+```bash
+./scripts/apply-upstream-overrides.sh
+./scripts/check-mobile-codex-runtime.sh
 cd vendor/claudecodeui-1.25.2
 npm install
+cd ../..
 ```
 
-If you only want to run the project and not package the desktop tool, Python usually does not need extra third-party packages.
+What to check:
 
-If you want to build the Windows desktop tool as an `.exe`, run:
+- `UpstreamExists=true`
+- `UpstreamPath` points to `vendor/claudecodeui-1.25.2`
+- `Node=` has a value
+- if Tailscale is installed already, `Tailscale=` should also have a value
 
-```powershell
-pip install -r requirements.txt
-```
-
-## Step 5: Check your local environment
-
-Back in the project root, run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/check-mobile-codex-runtime.ps1
-```
-
-Important fields to confirm:
-
-- `UpstreamExists = True`
-- `Node` is present
-- `Nginx` is present
-- if you want private remote access, `Tailscale` should also be present
-
-## Step 6: Start the local stack
+### Step 2: Start the local Mac service
 
 Run:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start-mobile-codex-stack.ps1
+```bash
+./scripts/start-mobile-codex.sh
 ```
 
-This starts:
-
-1. the local `claudecodeui` service
-2. the local nginx reverse proxy
-
-Default ports:
-
-- app: `127.0.0.1:3001`
-- proxy: `127.0.0.1:8080`
-
-## Step 7: Launch the desktop control tool
-
-Run either:
-
-```powershell
-python mobile_codex_control.py
-```
-
-or:
-
-```powershell
-scripts\launch-mobile-codex-control.cmd
-```
-
-The desktop tool shows:
-
-- PC app service status
-- nginx status
-- Tailscale login state
-- remote publish state
-- phone device presence
-- pending device approvals
-
-## Step 8: First account registration
-
-Open the local page in a desktop browser:
+Then open this in a browser on the Mac:
 
 ```text
 http://127.0.0.1:3001
 ```
 
-Complete the first account registration.
+On first use:
 
-Notes:
+1. register your account
+2. log in
+3. confirm the local page works
+4. find the Owner Admin panel entry
 
-- this is a single-user system
-- the first registered account becomes your main account
+The Owner Admin panel is where you approve first-time devices.
 
-## Step 9: Phone access
+### Step 3: Enable the private iPhone URL
 
-### Local testing first
+Make sure:
 
-First test the login flow from the desktop browser.
+- Tailscale is installed and logged in on the Mac
+- Tailscale is installed and logged in on the iPhone
+- both devices are in the same tailnet
 
-### Private remote access through Tailscale
+Then run on the Mac:
 
-If both your PC and phone are logged into the same Tailscale network, run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/enable-mobile-codex-remote.ps1
+```bash
+./scripts/enable-mobile-codex-remote.sh
 ```
 
-Then check the remote publish state in the desktop control tool.
+You should get output like:
 
-Recommended phone clients:
-
-- a normal mobile browser
-- or your own WebView / wrapper app
-
-## Step 10: First-time device approval
-
-This is one of the key security features.
-
-When a new phone or new WebView logs in for the first time:
-
-1. the phone page shows “waiting for desktop approval”
-2. the desktop tool shows a pending device
-3. you verify device name, platform, user agent, and IP
-4. you click approve on the PC
-5. the phone automatically continues login
-
-Benefits:
-
-- even if account credentials leak, an unknown device still cannot log in directly
-- you control which phones enter the trusted-device whitelist
-
-## What success looks like
-
-If all of the following are true, the deployment is basically working:
-
-- `http://127.0.0.1:3001` opens on the PC
-- the desktop tool shows both the app service and nginx as healthy
-- the phone can open the private HTTPS address
-- the desktop tool shows a pending device on first login
-- after approval, the phone enters the project and session list
-- sending a message from the phone continues the Codex run on the PC
-
-## The 3 most common failure points
-
-If your first deployment fails, start with these three checks:
-
-### 1. Wrong upstream version or folder path
-
-You need:
-
-- upstream version: `v1.25.2`
-- folder path: `vendor/claudecodeui-1.25.2`
-
-If you are not sure the override flow really worked, run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/smoke-test-override-flow.ps1 -UpstreamZip <path-to-upstream-zip>
+```text
+Private remote URL: https://your-mac-name.example.ts.net
 ```
 
-### 2. Local dependencies were not discovered correctly
+That `Private remote URL` is the real iPhone address.
 
-The usual missing executables are:
+Do not use these on the iPhone:
 
-- `node.exe`
-- `nginx.exe`
-- `tailscale.exe`
+- `http://127.0.0.1:3001`
+- the one-time Tailscale admin/login URL shown while enabling Serve
 
-Run:
+### Step 4: Log in from the iPhone for the first time
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/check-mobile-codex-runtime.ps1
+On the iPhone:
+
+1. open Safari
+2. open the `Private remote URL`
+3. log in with the account you created on the Mac
+
+Two normal outcomes:
+
+- it opens directly because the device is already trusted
+- it waits for approval because this is a new device
+
+If it waits for approval, go back to the Mac:
+
+1. open `http://127.0.0.1:3001`
+2. open the Owner Admin panel
+3. find the pending iPhone
+4. approve it
+
+After approval, the iPhone should continue automatically.
+
+### Step 5: Daily usage after setup
+
+On the Mac:
+
+```bash
+./scripts/start-mobile-codex.sh
 ```
 
-If any important field is empty, fix that first.
+On the iPhone:
 
-### 3. Your wrapped phone app is not WebView-compatible enough
+1. open the same Tailscale private URL
+2. browse session history
+3. reopen an existing session or start a new one
+4. send prompts and let the Mac continue the Codex work
 
-If a normal phone browser works but your wrapper app fails, suspect the wrapper first, not the account credentials.
+When you are done, stop the local service on the Mac:
 
-Recommended order:
+```bash
+./scripts/stop-mobile-codex.sh
+```
 
-- validate the full flow in a normal mobile browser first
-- test the wrapper app second
-- confirm support for `localStorage`, cookies, `Authorization` headers, and WebSocket
+### Step 6: Optional auto-start on login
+
+Install the per-user `launchd` agent:
+
+```bash
+./scripts/install-mobile-codex-launchd.sh
+```
+
+Remove it later if you do not want auto-start:
+
+```bash
+./scripts/uninstall-mobile-codex-launchd.sh
+```
+
+## The 5 most common beginner mistakes
+
+### 1. Using the wrong address on the iPhone
+
+The iPhone should use:
+
+```text
+https://<your-machine>.ts.net
+```
+
+Not:
+
+```text
+http://127.0.0.1:3001
+```
+
+### 2. Trying to log in on the iPhone before creating the account on the Mac
+
+Create the account locally on the Mac first. Then use that same account on the iPhone.
+
+### 3. Forgetting first-device approval
+
+If the iPhone waits for approval, do not assume the password is wrong first.
+Check the Owner Admin panel on the Mac.
+
+### 4. Wrong upstream folder or version
+
+The expected path is:
+
+```text
+vendor/claudecodeui-1.25.2
+```
+
+### 5. Tailscale is not logged in on both devices
+
+Both the Mac and the iPhone must be logged into the same tailnet.
 
 ## Common commands
 
-### Start everything
+### Check the runtime
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/start-mobile-codex-stack.ps1
+```bash
+./scripts/check-mobile-codex-runtime.sh
 ```
 
-### Stop everything
+### Apply upstream overrides
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/stop-mobile-codex-stack.ps1
+```bash
+./scripts/apply-upstream-overrides.sh
 ```
 
-### Check Tailscale status
+### Start the local service
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/check-tailscale-status.ps1
+```bash
+./scripts/start-mobile-codex.sh
 ```
 
-### Package the desktop tool
+### Stop the local service
 
-```powershell
-scripts\package-mobile-codex-control.cmd
+```bash
+./scripts/stop-mobile-codex.sh
 ```
 
-### Smoke-test the override flow
+### Enable the private iPhone URL
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/smoke-test-override-flow.ps1 -UpstreamZip <path-to-upstream-zip>
+```bash
+./scripts/enable-mobile-codex-remote.sh
 ```
 
-## Troubleshooting
+### Install auto-start
 
-### 1. The phone can open the page, but nothing happens after login
+```bash
+./scripts/install-mobile-codex-launchd.sh
+```
 
-Check:
+### Remove auto-start
 
-- whether the desktop tool shows a pending device
-- whether this is the first login for the device
-- whether the desktop-side services are still running
+```bash
+./scripts/uninstall-mobile-codex-launchd.sh
+```
 
-### 2. Browser login works, but a wrapped app fails
+## More documentation
 
-This project includes WebView compatibility work, but wrapper quality varies a lot.
-
-Check whether the wrapper allows:
-
-- `localStorage`
-- `Authorization` headers
-- WebSocket
-- cookie behavior required by the app
-
-If the browser works but the wrapper app does not, the issue is often the wrapper capability, not the account itself.
-
-### 3. You see 502 errors
-
-Check:
-
-- `tmp/logs/mobile-codex-app.stdout.log`
-- `tmp/logs/mobile-codex-app.stderr.log`
-- nginx logs
-
-### 4. Why not expose it directly to the public internet?
-
-Because this project controls local Codex sessions on your PC, which is a high-trust environment.  
-The intended setup is private network + reverse proxy + device approval, not direct public exposure.
-
-## Recommended reading
-
-- Deployment guide: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+- macOS English deployment: [`docs/DEPLOYMENT-macos.md`](docs/DEPLOYMENT-macos.md)
+- macOS 中文部署：[`docs/DEPLOYMENT-macos.zh-CN.md`](docs/DEPLOYMENT-macos.zh-CN.md)
+- Windows English deployment: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)
+- Windows 中文部署：[`docs/DEPLOYMENT.zh-CN.md`](docs/DEPLOYMENT.zh-CN.md)
 - Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Security policy: [`SECURITY.md`](SECURITY.md)
-- Open-source release checklist: [`docs/OPEN_SOURCE_RELEASE_CHECKLIST.md`](docs/OPEN_SOURCE_RELEASE_CHECKLIST.md)
 
 ## Upstream and license
 
@@ -423,11 +313,3 @@ This project builds on upstream `siteboon/claudecodeui`. Please keep:
 - upstream attribution
 - the included license
 - a clear description of local modifications
-
-## Before you publish your own fork
-
-At minimum:
-
-1. run `scripts/check-open-source-tree.ps1`
-2. run `scripts/smoke-test-override-flow.ps1`
-3. review [`SECURITY.md`](SECURITY.md)
