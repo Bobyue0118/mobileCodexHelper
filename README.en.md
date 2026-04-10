@@ -114,6 +114,13 @@ powershell -ExecutionPolicy Bypass -File scripts/enable-mobile-codex-remote.ps1
 
 At that point, you can usually continue controlling Codex from the phone.
 
+## macOS mobile-first deployment
+
+- English: `docs/DEPLOYMENT-macos.md`
+- 中文：`docs/DEPLOYMENT-macos.zh-CN.md`
+
+This path is for the workflow where Codex stays on the Mac, `./scripts/start-mobile-codex.sh` runs the local service, `./scripts/enable-mobile-codex-remote.sh` exposes the private Tailscale path, and the local Owner Admin panel approves the iPhone.
+
 ## Step 1: Download this project
 
 Put this repository in a working directory, for example:

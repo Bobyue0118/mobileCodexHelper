@@ -5,6 +5,9 @@
 This guide is written for first-time users.  
 The goal is simple: get the stack running on a Windows PC and make it reachable from your phone.
 
+This document remains the Windows-first deployment path.
+For the macOS mobile-first path, use `docs/DEPLOYMENT-macos.md`.
+
 ## Expected result
 
 After deployment, you should be able to:

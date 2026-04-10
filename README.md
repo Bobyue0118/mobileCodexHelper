@@ -146,6 +146,14 @@ Tailscale 私网 HTTPS
 - 中文：`docs/DEPLOYMENT.zh-CN.md`
 - English: `docs/DEPLOYMENT.md`
 
+## macOS 手机优先部署
+
+- English: `docs/DEPLOYMENT-macos.md`
+- 中文：`docs/DEPLOYMENT-macos.zh-CN.md`
+
+这条路线对应的是“Mac 上运行 Codex，iPhone 通过私有网页继续控制”的工作方式。
+关键命令是 `./scripts/start-mobile-codex.sh`、`./scripts/enable-mobile-codex-remote.sh`，以及本地页面里的 Owner Admin 面板。
+
 ## 部署成功的判断标准
 
 如果下面这些都满足，说明部署基本成功：
