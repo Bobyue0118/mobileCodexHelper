@@ -599,6 +599,20 @@ const trustedDevicesDb = {
     }
   },
 
+  listPendingApprovalRequestsByUser: (userId) => {
+    try {
+      return db.prepare(`
+        SELECT dar.*, u.username
+        FROM device_approval_requests dar
+        LEFT JOIN users u ON u.id = dar.user_id
+        WHERE dar.status = 'pending' AND dar.user_id = ?
+        ORDER BY dar.created_at DESC
+      `).all(userId);
+    } catch (err) {
+      throw err;
+    }
+  },
+
   resolveApprovalRequest: (requestToken, status, note = null) => {
     try {
       const nowColumn = status === 'approved' ? 'approved_at' : 'rejected_at';

@@ -8,6 +8,11 @@ import {
   generateToken,
   setAuthCookie,
 } from '../middleware/auth.js';
+import {
+  buildOwnerAdminStatus,
+  isLoopbackAddress,
+  loadTailscaleAdminState,
+} from '../utils/owner-admin.js';
 
 const router = express.Router();
 const sanitizeUser = (user) => ({ id: user.id, username: user.username });
@@ -51,6 +56,22 @@ const buildApprovalPayload = (request, message = '新设备需要在电脑端批
   message,
   deviceName: request.device_name || request.device_id,
 });
+
+const requireLocalOwnerSession = (req, res, next) => {
+  const candidates = [
+    typeof req.headers['x-forwarded-for'] === 'string'
+      ? req.headers['x-forwarded-for'].split(',')[0].trim()
+      : null,
+    req.ip,
+    req.socket?.remoteAddress,
+  ].filter(Boolean);
+
+  if (!candidates.some((value) => isLoopbackAddress(value))) {
+    return res.status(403).json({ error: 'Owner admin is only available from the Mac local browser.' });
+  }
+
+  return next();
+};
 
 const issueAuthSession = (req, res, user, deviceMetadata = null) => {
   const token = generateToken(user, {
@@ -106,6 +127,106 @@ router.get('/device-approval/:requestToken', async (req, res) => {
   } catch (error) {
     console.error('Device approval status error:', error);
     res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+router.get('/owner-admin/status', authenticateToken, requireLocalOwnerSession, async (req, res) => {
+  try {
+    const tailscaleState = await loadTailscaleAdminState();
+    return res.json(buildOwnerAdminStatus({
+      workspacesRoot: process.env.WORKSPACES_ROOT || process.env.HOME || null,
+      tailscaleState,
+      port: Number(process.env.PORT || 3001),
+    }));
+  } catch (error) {
+    console.error('Owner admin status error:', error);
+    return res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+router.get('/owner-admin/pending-devices', authenticateToken, requireLocalOwnerSession, (req, res) => {
+  try {
+    const requests = trustedDevicesDb.listPendingApprovalRequestsByUser(req.user.id);
+    return res.json({ requests });
+  } catch (error) {
+    console.error('Owner admin pending devices error:', error);
+    return res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+router.get('/owner-admin/trusted-devices', authenticateToken, requireLocalOwnerSession, (req, res) => {
+  try {
+    const devices = trustedDevicesDb.listApprovedDevices(req.user.id);
+    return res.json({ devices });
+  } catch (error) {
+    console.error('Owner admin trusted devices error:', error);
+    return res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+router.post('/owner-admin/pending-devices/:requestToken/approve', authenticateToken, requireLocalOwnerSession, (req, res) => {
+  try {
+    const requestToken = normalizeTextField(req.params.requestToken, 128);
+    if (!requestToken) {
+      return res.status(400).json({ error: '审批令牌无效' });
+    }
+
+    const request = trustedDevicesDb.getApprovalRequestByToken(requestToken);
+    if (!request || request.user_id !== req.user.id || request.status !== 'pending') {
+      return res.status(404).json({ error: 'Pending approval request not found.' });
+    }
+
+    trustedDevicesDb.approveDevice(request.user_id, request.device_id, {
+      deviceName: request.device_name,
+      platform: request.platform,
+      appType: request.app_type,
+      ip: request.requested_ip,
+      userAgent: request.requested_user_agent,
+    });
+    trustedDevicesDb.resolveApprovalRequest(requestToken, 'approved');
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Owner admin approve device error:', error);
+    return res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+router.post('/owner-admin/pending-devices/:requestToken/reject', authenticateToken, requireLocalOwnerSession, (req, res) => {
+  try {
+    const requestToken = normalizeTextField(req.params.requestToken, 128);
+    if (!requestToken) {
+      return res.status(400).json({ error: '审批令牌无效' });
+    }
+
+    const request = trustedDevicesDb.getApprovalRequestByToken(requestToken);
+    if (!request || request.user_id !== req.user.id || request.status !== 'pending') {
+      return res.status(404).json({ error: 'Pending approval request not found.' });
+    }
+
+    trustedDevicesDb.resolveApprovalRequest(requestToken, 'rejected');
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Owner admin reject device error:', error);
+    return res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+router.delete('/owner-admin/trusted-devices/:deviceId', authenticateToken, requireLocalOwnerSession, (req, res) => {
+  try {
+    const deviceId = normalizeTextField(req.params.deviceId, 128);
+    if (!deviceId) {
+      return res.status(400).json({ error: '设备标识无效' });
+    }
+
+    const success = trustedDevicesDb.deactivateDevice(req.user.id, deviceId);
+    if (!success) {
+      return res.status(404).json({ error: 'Trusted device not found.' });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Owner admin revoke device error:', error);
+    return res.status(500).json({ error: '服务器内部错误' });
   }
 });
 
