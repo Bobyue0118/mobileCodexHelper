@@ -15,13 +15,13 @@ test('isLoopbackAddress accepts Express loopback variants', () => {
 
 test('buildOwnerAdminStatus returns local and remote URLs', () => {
   const payload = buildOwnerAdminStatus({
-    workspacesRoot: '/Users/bobyue/Code',
+    workspacesRoot: '/workspace/projects',
     tailscaleState: {
       installed: true,
       running: true,
       backendState: 'Running',
-      dnsName: 'bobyue-mac.tail123.ts.net',
-      remoteUrl: 'https://bobyue-mac.tail123.ts.net',
+      dnsName: 'codex-host.tailnet.ts.net',
+      remoteUrl: 'https://codex-host.tailnet.ts.net',
       authUrl: null,
     },
     port: 3001,
@@ -29,13 +29,13 @@ test('buildOwnerAdminStatus returns local and remote URLs', () => {
 
   assert.deepEqual(payload, {
     localUrl: 'http://127.0.0.1:3001',
-    remoteUrl: 'https://bobyue-mac.tail123.ts.net',
-    workspacesRoot: '/Users/bobyue/Code',
+    remoteUrl: 'https://codex-host.tailnet.ts.net',
+    workspacesRoot: '/workspace/projects',
     tailscale: {
       installed: true,
       running: true,
       backendState: 'Running',
-      dnsName: 'bobyue-mac.tail123.ts.net',
+      dnsName: 'codex-host.tailnet.ts.net',
       authUrl: null,
     },
   });

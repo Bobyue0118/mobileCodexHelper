@@ -19,16 +19,16 @@ The intended day-to-day workflow is that the user manages Codex sessions from th
 
 The repo already contains the core web-control concept:
 
-- a patched `claudecodeui` layer under [upstream-overrides/claudecodeui-1.25.2](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2)
-- Codex session discovery and resume support in [upstream-overrides/claudecodeui-1.25.2/server/openai-codex.js](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2/server/openai-codex.js)
-- project and session browsing in [upstream-overrides/claudecodeui-1.25.2/server/projects.js](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2/server/projects.js)
-- login and trusted-device persistence in [upstream-overrides/claudecodeui-1.25.2/server/routes/auth.js](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2/server/routes/auth.js) and [upstream-overrides/claudecodeui-1.25.2/server/database/db.js](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2/server/database/db.js)
+- a patched `claudecodeui` layer under `upstream-overrides/claudecodeui-1.25.2`
+- Codex session discovery and resume support in `upstream-overrides/claudecodeui-1.25.2/server/openai-codex.js`
+- project and session browsing in `upstream-overrides/claudecodeui-1.25.2/server/projects.js`
+- login and trusted-device persistence in `upstream-overrides/claudecodeui-1.25.2/server/routes/auth.js` and `upstream-overrides/claudecodeui-1.25.2/server/database/db.js`
 
 The repo is still operationally Windows-first:
 
-- PowerShell scripts under [scripts](/Users/bobyue/Documents/GitHub/mobileCodexHelper/scripts)
-- a Windows desktop helper in [mobile_codex_control.py](/Users/bobyue/Documents/GitHub/mobileCodexHelper/mobile_codex_control.py)
-- Windows/nginx deployment assumptions in [README.md](/Users/bobyue/Documents/GitHub/mobileCodexHelper/README.md) and [docs/DEPLOYMENT.md](/Users/bobyue/Documents/GitHub/mobileCodexHelper/docs/DEPLOYMENT.md)
+- PowerShell scripts under `scripts`
+- a Windows desktop helper in `mobile_codex_control.py`
+- Windows/nginx deployment assumptions in `README.md` and `docs/DEPLOYMENT.md`
 
 The macOS work should preserve the existing trust model and Codex web-control behavior, while removing the Windows helper as a runtime dependency.
 
@@ -292,12 +292,12 @@ This ordering delivers usable value early while keeping the diff scoped to the a
 
 The design suggests likely changes in:
 
-- [README.md](/Users/bobyue/Documents/GitHub/mobileCodexHelper/README.md)
-- [docs/DEPLOYMENT.md](/Users/bobyue/Documents/GitHub/mobileCodexHelper/docs/DEPLOYMENT.md)
-- [upstream-overrides/claudecodeui-1.25.2/server/routes/auth.js](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2/server/routes/auth.js)
-- [upstream-overrides/claudecodeui-1.25.2/server/database/db.js](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2/server/database/db.js)
-- frontend files under [upstream-overrides/claudecodeui-1.25.2/src](/Users/bobyue/Documents/GitHub/mobileCodexHelper/upstream-overrides/claudecodeui-1.25.2/src)
-- new macOS scripts under [scripts](/Users/bobyue/Documents/GitHub/mobileCodexHelper/scripts)
+- `README.md`
+- `docs/DEPLOYMENT.md`
+- `upstream-overrides/claudecodeui-1.25.2/server/routes/auth.js`
+- `upstream-overrides/claudecodeui-1.25.2/server/database/db.js`
+- frontend files under `upstream-overrides/claudecodeui-1.25.2/src`
+- new macOS scripts under `scripts`
 
 The design intentionally does not require a native macOS desktop control app.
 
